@@ -1,6 +1,6 @@
 let mongoose = require('mongoose');
 
-let followerSchmema = mongoose.Schema({
+let followingSchmema = mongoose.Schema({
     userMail : {
         type : String,
     },
@@ -12,4 +12,4 @@ let followerSchmema = mongoose.Schema({
     }
 });
 
-let Follower = module.exports = mongoose.model('Follower', followerSchmema);
+let Following = module.exports = mongoose.model('Following', followingSchmema);

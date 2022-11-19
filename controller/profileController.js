@@ -1,14 +1,5 @@
 const profileService = require('../services/profileService');
 
-/*
-    Profile Object:
-    {
-        "userName" : "",
-        "BIO" : "",
-        "profileName"
-    }
-*/
-
 const getProfile = async (req,res) => {
     // console.log(req.body, req.params);
     const getUserProfile = await profileService.getProfile(req.params);

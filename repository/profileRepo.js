@@ -8,6 +8,7 @@ const client = new MongoClient(URI);
 
 let Profile = require('../models/profileModel');
 let Follower = require('../models/followerModel');
+const Following = require('../models/followingModel');
 
 const getProfile = async (body) => {
     console.log(body, "repo");
@@ -23,20 +24,23 @@ const getProfile = async (body) => {
     }
 };
 
+//This function creates the user Profile for profile, followers and following.
 const createProfile = async(body) => {
     await client.connect();
     console.log(body);
     const userProfileObj = new Profile(body);
-    // const userProfileObj = {
-    //     userName : body.userName,
-    //     profileName : body.profileName,
-    //     userBio : body.userBIO
-    // }
+    const userFollowerObj = new Follower(body);
+    const userFollowingObj = new Following(body);
+    console.log(userProfileObj, userFollowerObj, userFollowingObj);
     const profileCollection = client.db("instaProfileDB").collection("profiles");
+    const followerCollection = client.db("instaProfileDB").collection("followers");
+    const followingCollection = client.db("instaProfileDB").collection("following");
     try{
         const createUserProfile = await profileCollection.insertOne(userProfileObj);
-        console.log(createUserProfile);
-        return createUserProfile.acknowledged;
+        const createUserFollowers = await followerCollection.insertOne(userFollowerObj);
+        const createUserFollowing = await followingCollection.insertOne(userFollowingObj);
+        console.log(createUserProfile, createUserFollowers, createUserFollowing);
+        return [createUserProfile.acknowledged, createUserFollowers.acknowledged, createUserFollowing.acknowledged];
     }
     catch(err){
         return {"status" : "Failure", "data" : err};
@@ -45,17 +49,25 @@ const createProfile = async(body) => {
 
 const updateProfile = async(body) => {
     await client.connect();
-    console.log(body);
     const updateProfileObj = new Profile(body);
+    console.log(body, updateProfileObj);
     const profileCollection = client.db("instaProfileDB").collection("profiles");
+    const followerCollection = client.db("instaProfileDB").collection("followers");
+    const followingCollection = client.db("instaProfileDB").collection("following");
     try{
-        const updateUserProfile = await profileCollection.updateOne({userName : body.userName}, {$set:{
-            "userName" : body.userName,
-            "profileName" : body.profileName,
-            "userBio" : body.userBIO
+        const updateUserProfile = await profileCollection.findOneAndUpdate({userMail : updateProfileObj.userMail}, {$set:{
+            "userName" : updateProfileObj.userName,
+            "profileName" : updateProfileObj.profileName,
+            "userBio" : updateProfileObj.userBio
         }});
-        console.log(updateUserProfile);
-        return updateUserProfile;
+        const updateUserFollower = await followerCollection.findOneAndUpdate({userMail : updateProfileObj.userMail}, {$set:{
+            "userName" : updateProfileObj.userName
+        }});
+        const updateUserFollowing = await followingCollection.findOneAndUpdate({userMail : updateProfileObj.userMail}, {$set:{
+            "userName" : updateProfileObj.userName
+        }})
+        console.log(updateUserProfile, updateUserFollower, updateUserFollowing);
+        return [updateUserProfile.value, updateUserFollower.value, updateUserFollowing.value];
     }
     catch(err){
         return {"status" : "Failure", "data" : err};
@@ -65,11 +77,16 @@ const updateProfile = async(body) => {
 const deleteProfile = async(body) => {
     await client.connect();
     console.log(body);
+    const userProfileObj = new Profile(body);
     const profileCollection = client.db("instaProfileDB").collection("profiles");
+    const followerCollection = client.db("instaProfileDB").collection("followers");
+    const followingCollection = client.db("instaProfileDB").collection("following");
     try{
-        const deleteUserProfile = await profileCollection.deleteOne({userName : body.userName});
-        console.log(deleteUserProfile);
-        return deleteUserProfile.acknowledged;
+        const deleteUserProfile = await profileCollection.deleteOne({userMail : userProfileObj.userMail});
+        const deleteUserFollower = await followerCollection.deleteOne({userMail : userProfileObj.userMail});
+        const deleteUserFollowing = await followingCollection.deleteOne({userMail : userProfileObj.userMail});
+        console.log(deleteUserProfile, deleteUserFollower, deleteUserFollowing);
+        return [deleteUserProfile.acknowledged, deleteUserFollower.acknowledged, deleteUserFollowing.acknowledged];
     }
     catch(err){
         return {"status" : "Failure", "data" : err};
@@ -95,13 +112,23 @@ const searchProfile = async(body) => {
 const addFollower = async(body) => {
     await client.connect();
     const findUser = {userMail : body.userMail}; 
-    console.log(body, findUser)
+    const findFollower = {userMail : body.userFollower[1]};
+    const addFollowing = {
+        userMail : body.userMail,
+        userName : body.userFollower[0],
+        userFollower : [body.userName]
+    };
+    console.log(body, findUser, addFollowing, findFollower);
     const followerCollection = client.db("instaProfileDB").collection("followers");
     const followingCollection = client.db("instaProfileDB").collection("following");
     try{
-        const addUserFollower = await followerCollection.insertOne(body);
-        const addUserFollowing = await followingCollection.insertOne(body);
-        console.log(addUserFollower);
+        const addUserFollower = await followerCollection.findOneAndUpdate(findUser, {
+            $push : {'userFollower' : addFollowing.userFollower[0]}
+        });
+        const addUserFollowing = await followingCollection.findOneAndUpdate(findFollower, {
+            $push : {'userFollower' : addFollowing.userName}
+        });
+        console.log(addUserFollower, addUserFollowing);
         return [addUserFollower,addUserFollowing];
     }
     catch(err){
@@ -110,15 +137,20 @@ const addFollower = async(body) => {
 };
 
 const removeFollower = async(body) => {
-    console.log(body, "h1");
+    const userFollower = new Follower(body);
+    console.log(body, "h1", userFollower);
     await client.connect();
-    const profileCollection = client.db("instaProfileDB").collection("followers");
+    const followerCollection = client.db("instaProfileDB").collection("followers");
+    const followingCollection = client.db("instaProfileDB").collection("following");
     try{
-        const deleteUserFollower = await profileCollection.updateOne({"userName" : body.userName}, {
-            $pull : {'userFollower' : body.userFollower}
+        const deleteUserFollower = await followerCollection.updateOne({"userName" : userFollower.userName}, {
+            $pull : {'userFollower' : userFollower.userFollower}
         });
-        console.log(deleteUserFollower);
-        return deleteUserFollower;
+        const deleteUserFollowing = await followingCollection.updateOne({"userName" : userFollower.userFollower}, {
+            $pull : {'userFollower' : userFollower.userName}
+        });
+        console.log(deleteUserFollower, deleteUserFollowing);
+        return [deleteUserFollower, deleteUserFollowing];
     }
     catch(err){
         return {"status" : "Failure", "data" : err};   

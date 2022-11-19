@@ -2,34 +2,17 @@ let mongoose = require('mongoose');
 
 let profileSchema = mongoose.Schema({
     userMail : {
-        typeof : String,
-        required : true
+        type : String,
     },
     userName : {
-        typeof : String,
-        required : true
+        type : String,
     },
     profileName : {
-        typeof : String,
-        required : true
+        type : String,
     },
     userBio : {
-        typeof : String,
-        required : true
+        type : String,
     }
 });
 
 let Profile = module.exports = mongoose.model('Profile', profileSchema);
-
-const followerObj = {
-    "userMail" : "userMail",
-    "userName" : "userName",
-    "userFollowers" : ["userFollowers"]
-};
-
-const followingObj = {
-    "userMail" : "userMail",
-    "userName" : "userName",
-    "userFollowing" : ["userFollowing"]
-};
-
